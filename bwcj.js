@@ -10,89 +10,102 @@ export bwcjCookie="H3is33xad2xxxxxxxxxxxxxxxxxx"
 cron: 46 8,20 * * *
 const $ = new Env("霸王茶姬");
  */
-const $ = new Env('霸王茶姬签到');
+const $ = new Env('霸王茶姬');
 
-let cookiesArr = ["1l7O75i7nUhRlW84xT6M_6kaHQdxG_-X-39Xo_TLBCjIAFFz_hmQumh6fZSKaTBF","DguYkACiNUQZHBXz60zucwhc0oMO3F8OVAy6ZQ0aA-ZhIM2lipscWB87bCS9y_tH","N_wa-fN318_RpHP6Bt9rHMorX1cHYgZ-2PuXoFWolb1_w5XJFsVSQ7Oo5vvCMftC"], cookie = '';
+const bwcjCookie = $.getenv('bwcjCookie')
 
+let cookieArr = [], cookie = '', length = 0, n = 0;
 
 !(async () => {
-  if (!cookiesArr[0]) {
-    return;
-  }
-  for (let i = 0; i < cookiesArr.length; i++) {
-    let count=i+1;
-    console.log('------第'+count+'个账号签到------')
-    if (cookiesArr[i]) {
-      cookie = cookiesArr[i];
-      await userSignIn(cookie,count);
+    if (!bwcjCookie) {
+        $.log('未找到bwcjCookie，请检查环境变量设置');
+        $.msg($.name, '【提示】请先获取霸王茶姬cookie', 'cookie不能为空');
+        return;
     }
-  }
+
+    cookieArr = bwcjCookie.split('\n');
+    length = cookieArr.length;
+
+    $.log('------共' + length + '个账号------');
+
+    for (let i = 0; i < length; i++) {
+        n++;
+        $.log('------第' + n + '个账号签到------');
+        if (cookieArr[i]) {
+            cookie = cookieArr[i];
+            await userSignIn();
+        }
+    }
 })()
     .catch((e) => {
-      $.log('', `失败! 原因: ${e}!`, '')
+        $.log('', `❌ ${$.name}, 失败! 原因: ${e}!`, '');
     })
     .finally(() => {
-      $.done();
+        $.done();
     })
 
-function userSignIn(token,count) {
-  return new Promise(resolve => {
-    $.post(taskUrl(token), (err, resp, data) => {
-      try {
-        if (err) {
-          console.log(`${JSON.stringify(err)}`)
-          console.log(resp)
-          console.log(`API请求失败，请检查网路重试`)
-        } else {
-          if (safeGet(data)) {
-            data = JSON.parse(data);
-            if (data.status) {
-              console.log(`今日签到成功`)
-            } else if (!data.status) {
-              console.log(data.message)
-            } else {
-              console.log(`异常：${JSON.stringify(data)}`)
+function userSignIn() {
+    return new Promise(resolve => {
+        $.post(taskUrl(), (err, resp, data) => {
+            try {
+                if (err) {
+                    $.log(`${JSON.stringify(err)}`);
+                    $.log(resp);
+                    $.log(`${$.name} API请求失败，请检查网路重试`);
+                } else {
+                    if (safeGet(data)) {
+                        data = JSON.parse(data);
+                        if (data.status) {
+                            $.log(`今日签到成功`);
+                            $.msg($.name, `签到成功`, `${data.message}`);
+                        } else if (!data.status) {
+                            $.log(data.message);
+                            $.msg($.name, `签到失败`, `${data.message}`);
+                        } else {
+                            $.log(`异常：${JSON.stringify(data)}`);
+                            $.msg($.name, `异常：${JSON.stringify(data)}`, ``);
+                        }
+                    }
+                }
+            } catch (e) {
+                $.logErr(e, resp)
+            } finally {
+                resolve();
             }
-          }
-        }
-      } catch (e) {
-        $.logErr(e, resp)
-      } finally {
-        resolve();
-      }
+        })
     })
-  })
 }
-function taskUrl(token) {
-  let t = +new Date()
-  return {
-    url: `https://webapi2.qmai.cn/web/cmk-center/sign/takePartInSign`,
-    body: '{"activityId":"947079313798000641"}',
-    headers: {
-      'Host': `webapi2.qmai.cn`,
-      'Connection': 'keep-alive',
-      'Content-Length': 64,
-      'Qm-From': 'wechat',
-      'Qm-From-Type': 'catering',
-      'content-type': 'application/json',
-      'Qm-User-Token': token,
-      'Accept': 'v=1.0',
-      'Accept-Encoding': 'gzip,compress,br,deflate',
-      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.49(0x18003137) NetType/4G Language/zh_CN',
-      'Referer': 'https://servicewechat.com/wxafec6f8422cb357b/176/page-frame.html'
+
+function taskUrl() {
+    return {
+        url: `https://webapi2.qmai.cn/web/cmk-center/sign/takePartInSign`,
+        body: '{"activityId":"947079313798000641"}',
+        headers: {
+            'Host': `webapi2.qmai.cn`,
+            'Connection': 'keep-alive',
+            'Content-Length': 64,
+            'Qm-From': 'wechat',
+            'Qm-From-Type': 'catering',
+            'content-type': 'application/json',
+            'Qm-User-Token': cookie,
+            'Accept': 'v=1.0',
+            'Accept-Encoding': 'gzip,compress,br,deflate',
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.49(0x18003137) NetType/4G Language/zh_CN',
+            'Referer': 'https://servicewechat.com/wxafec6f8422cb357b/176/page-frame.html'
+        }
     }
-  }
 }
+
 function safeGet(data) {
-  try {
-    if (typeof JSON.parse(data) == "object") {
-      return true;
+    try {
+        if (typeof JSON.parse(data) == "object") {
+            return true;
+        }
+    } catch (e) {
+        $.log(e);
+        $.log(`访问数据为空，请检查自身设备网络情况`);
+        return false;
     }
-  } catch (e) {
-    console.log(e);
-    console.log(`访问数据为空，请检查自身设备网络情况`);
-    return false;
-  }
 }
 
 // prettier-ignore
