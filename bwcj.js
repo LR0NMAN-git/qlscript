@@ -12,7 +12,7 @@ const $ = new Env("霸王茶姬");
  */
 const $ = new Env('霸王茶姬');
 
-const bwcjCookie = $.env('bwcjCookie')
+const bwcjCookie = ($.isNode() ? process.env.bwcjCookie : $.getdata('bwcjCookie')) || ''
 
 let cookieArr = [], cookie = '', length = 0, n = 0;
 
