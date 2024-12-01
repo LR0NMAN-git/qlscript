@@ -36,16 +36,16 @@ def main(ip_ports, ips):
      # 检查 ping
     for ip in ips:
         if not ping(ip[1]):
-            append(f"{ip[0]},失败")
+            append(f"{ip[0]},offline")
         else:
-            append(f"{ip[0]},成功")
+            append(f"{ip[0]},running")
     
     # 检查 IP:PORT 连接
     for ip_port in ip_ports:
         if not connection(ip_port[1],ip_port[2]):
-            append(f"{ip_port[0]},失败")
+            append(f"{ip_port[0]},offline")
         else:
-            append(f"{ip_port[0]},成功")
+            append(f"{ip_port[0]},running")
 
 
 
