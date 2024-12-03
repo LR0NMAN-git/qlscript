@@ -270,7 +270,7 @@ def ql_login() -> str:  # 方法 青龙登录(获取Token 功能同上)
 # 返回值 list[wskey]
 def get_wskey() -> list:  # 方法 获取 wskey值 [系统变量传递]
     if "JD_WSCK" in os.environ:  # 判断 JD_WSCK是否存在于环境变量
-        wskey_list = os.environ['JD_WSCK'].split('&')  # 读取系统变量 以 & 分割变量
+        wskey_list = os.environ['JD_WSCK'].split('\n')  # 读取系统变量 以 & 分割变量
         if len(wskey_list) > 0:  # 判断 WSKEY 数量 大于 0 个
             return wskey_list  # 返回 WSKEY [LIST]
         else:
