@@ -1,3 +1,6 @@
+'''
+new Env('系统检查');
+'''
 import socket
 import time
 from notify import send
@@ -36,16 +39,16 @@ def main(ip_ports, ips):
      # 检查 ping
     for ip in ips:
         if not ping(ip[1]):
-            append(f"{ip[0]},offline")
+            append(f"{ip[0]}-offline")
         else:
-            append(f"{ip[0]},running")
+            append(f"{ip[0]}-running")
     
     # 检查 IP:PORT 连接
     for ip_port in ip_ports:
         if not connection(ip_port[1],ip_port[2]):
-            append(f"{ip_port[0]},offline")
+            append(f"{ip_port[0]}-offline")
         else:
-            append(f"{ip_port[0]},running")
+            append(f"{ip_port[0]}-running")
 
 
 
