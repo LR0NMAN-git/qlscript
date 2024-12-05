@@ -69,6 +69,7 @@ def sign_core(par):
         arr1[i] = r2 & 0xff
     return bytes(arr1)
 
+
 def get_sign(functionId, body, uuid, client, clientVersion, st, sv):
     all_arg = "functionId=%s&body=%s&uuid=%s&client=%s&clientVersion=%s&st=%s&sv=%s" % (
         functionId, body, uuid, client, clientVersion, st, sv)
@@ -76,10 +77,12 @@ def get_sign(functionId, body, uuid, client, clientVersion, st, sv):
     info = hashlib.md5(base64.b64encode(ret_bytes)).hexdigest()
     return info
 
+
 def base64Encode(string):
     string1 = "KLMNOPQRSTABCDEFGHIJUVWXYZabcdopqrstuvwxefghijklmnyz0123456789+/"
     string2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     return base64.b64encode(string.encode("utf-8")).decode('utf-8').translate(str.maketrans(string1, string2))
+
 
 def base64Decode(string):
     string1 = "KLMNOPQRSTABCDEFGHIJUVWXYZabcdopqrstuvwxefghijklmnyz0123456789+/"
@@ -87,12 +90,15 @@ def base64Decode(string):
     stringbase = base64.b64decode(string.translate(str.maketrans(string1, string2))).decode('utf-8')
     return stringbase
 
+
 def genJDUA():
     st = round(time.time() * 1000)
     aid = base64Encode(''.join(str(uuid.uuid4()).split('-'))[16:])
     oaid = base64Encode(''.join(str(uuid.uuid4()).split('-'))[16:])
-    ua = 'jdapp;android;11.1.4;;;appBuild/98176;ef/1;ep/{"hdid":"JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw=","ts":%s,"ridx":-1,"cipher":{"sv":"CJS=","ad":"%s","od":"%s","ov":"CzO=","ud":"%s"},"ciphertype":5,"version":"1.2.0","appname":"com.jingdong.app.mall"};Mozilla/5.0 (Linux; Android 12; M2102K1C Build/SKQ1.220303.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36' % (st, aid, oaid, aid)
+    ua = 'jdapp;android;11.1.4;;;appBuild/98176;ef/1;ep/{"hdid":"JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw=","ts":%s,"ridx":-1,"cipher":{"sv":"CJS=","ad":"%s","od":"%s","ov":"CzO=","ud":"%s"},"ciphertype":5,"version":"1.2.0","appname":"com.jingdong.app.mall"};Mozilla/5.0 (Linux; Android 12; M2102K1C Build/SKQ1.220303.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36' % (
+    st, aid, oaid, aid)
     return ua
+
 
 def genParams():
     suid = ''.join(str(uuid.uuid4()).split('-'))[16:]
@@ -684,6 +690,10 @@ if __name__ == '__main__':  # Python主函数执行入口
                 if return_ws:  # 判断 (return_ws[0]) 类型: [Bool]
                     logger.info("wskey转换成功\n")  # 标准日志输出
                     ql_insert(return_ws)  # 调用方法 [ql_insert]
+                else:
+                    pt_pin = "pt_" + str(ws.split(";")[0])
+                    text = f"账号{pt_pin}疑似IP风控等问题失效"
+                    ql_send(text)
             logger.info(f"暂停{sleepTime}秒\n")  # 标准日志输出
             time.sleep(sleepTime)  # 脚本休眠
         else:
