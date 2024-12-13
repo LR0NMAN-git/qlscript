@@ -15,6 +15,7 @@ import struct
 import sys
 import time
 import uuid
+from datetime import datetime, time
 
 WSKEY_MODE = 0
 # 0 = Default / 1 = Debug!
@@ -96,7 +97,7 @@ def genJDUA():
     aid = base64Encode(''.join(str(uuid.uuid4()).split('-'))[16:])
     oaid = base64Encode(''.join(str(uuid.uuid4()).split('-'))[16:])
     ua = 'jdapp;android;11.1.4;;;appBuild/98176;ef/1;ep/{"hdid":"JM9F1ywUPwflvMIpYPok0tt5k9kW4ArJEU3lfLhxBqw=","ts":%s,"ridx":-1,"cipher":{"sv":"CJS=","ad":"%s","od":"%s","ov":"CzO=","ud":"%s"},"ciphertype":5,"version":"1.2.0","appname":"com.jingdong.app.mall"};Mozilla/5.0 (Linux; Android 12; M2102K1C Build/SKQ1.220303.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/97.0.4692.98 Mobile Safari/537.36' % (
-    st, aid, oaid, aid)
+        st, aid, oaid, aid)
     return ua
 
 
@@ -154,7 +155,16 @@ def ql_send(text):
         return True
     else:
         try:
-            send('WSKEY转换', text)  # 消息发送
+            now = datetime.now()
+            start_time = time(8, 0)
+            end_time = time(23, 59, 59)
+            print(f"当前时间{now}")
+            # 判断是否在范围内
+            if now.time() >= start_time and (now.time() <= end_time or now.time() == time(0, 0)):
+                print("推送")
+                send('WSKEY转换', text)  # 消息发送
+            else:
+                print("不推送")
         except Exception as err:
             logger.debug(str(err))  # Debug日志输出
             logger.info("通知发送失败")  # 标准日志输出
