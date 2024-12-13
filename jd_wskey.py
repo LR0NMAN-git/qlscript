@@ -15,7 +15,6 @@ import struct
 import sys
 import time
 import uuid
-from datetime import datetime, time
 
 WSKEY_MODE = 0
 # 0 = Default / 1 = Debug!
@@ -155,6 +154,7 @@ def ql_send(text):
         return True
     else:
         try:
+            from datetime import datetime, time
             now = datetime.now()
             start_time = time(8, 0)
             end_time = time(23, 59, 59)
