@@ -4,7 +4,9 @@ new Env('系统检查');
 import os
 import platform
 import socket
+from datetime import datetime, timedelta
 
+from git import Repo, GitCommandError
 from notify import send
 
 content = ""
@@ -39,6 +41,48 @@ def ping(ip):
     return os.system(' '.join(command)) == 0
 
 
+def check_git_commits():
+    REPO_PATH = "/HealthCheck/repo/jdpro"  # 青龙面板建议用绝对路径
+    REMOTE_URL = "https://github.com/6dylan6/jdpro.git"
+    TARGET_FILE = "jd_wskey.py"
+    # 初始化/拉取仓库
+    try:
+        if not os.path.exists(REPO_PATH):
+            Repo.clone_from(REMOTE_URL, REPO_PATH)
+            print(f"✅ 仓库克隆成功至 {REPO_PATH}")
+        repo = Repo(REPO_PATH)
+        print(f"✅ 强制更新远程内容 {REPO_PATH}")
+        repo.remotes.origin.pull()
+    except GitCommandError as e:
+        print(f"❌ 仓库操作失败: {str(e)}")
+        return
+
+    # 获取今日时间范围（UTC时间）
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start + timedelta(days=1)
+    print(today_start)
+    print(today_end)
+    # 检查目标文件提交记录
+    try:
+        commits = list(repo.iter_commits('origin/main', paths=TARGET_FILE))
+        today_commits = [
+            commit for commit in commits
+            if today_start.timestamp() <= commit.committed_date <= today_end.timestamp()
+        ]
+    except Exception as e:
+        print(f"❌ 提交记录解析失败: {str(e)}")
+        return
+
+    # 输出结果（青龙面板需标准输出）
+    if today_commits:
+        latest = today_commits[0]
+        time_str = datetime.fromtimestamp(latest.committed_date).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"📌 文件 {TARGET_FILE} 今日有提交\n最新提交哈希: {latest.hexsha[:7]}\n提交时间: {time_str}")
+        append(f"文件 {TARGET_FILE} 今日有提交\n最新提交哈希: {latest.hexsha[:7]}\n提交时间: {time_str}")
+    else:
+        print(f"⏳ 文件 {TARGET_FILE} 今日无新提交")
+
+
 # 主逻辑
 def main(ip_ports, ips):
     global isNotify
@@ -53,6 +97,8 @@ def main(ip_ports, ips):
         if not connection(ip_port[1], ip_port[2]):
             isNotify = True
             append(f"{ip_port[0]}-offline")
+
+    check_git_commits()
 
 
 if __name__ == "__main__":
