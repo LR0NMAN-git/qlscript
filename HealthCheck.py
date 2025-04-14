@@ -94,7 +94,7 @@ def main(ip_ports, ips):
 
     # 检查 IP:PORT 连接
     for ip_port in ip_ports:
-        if not connection(ip_port[1], ip_port[2]):
+        if not connection(ip_port[1], int(ip_port[2])):
             isNotify = True
             append(f"{ip_port[0]}-offline")
 
@@ -103,19 +103,16 @@ def main(ip_ports, ips):
 
 if __name__ == "__main__":
     # 配置要检查的 IP 和端口列表
-    ip_ports = [
-        ("青龙", "192.168.10.171", 5700),
-        ("mysql", "192.168.10.171", 3306),
-        ("frpc", "192.168.10.171", 7400),
-        ("phpmyadmin", "192.168.10.171", 8089),
-        ("bark", "192.168.10.171", 8080)
-        # 添加更多的 IP:PORT 组合
-    ]
-
+    ip_ports = []
     # 配置要 ping 的 IP
-    ips = [
-        ("PC", "192.168.10.241")
-    ]  # 例如，Google 的公共 DNS 服务器
+    ips = []
+
+    if "HealthCheck_Service" in os.environ:
+        lines = os.environ['HealthCheck_Service'].splitlines()
+        ip_ports = [tuple(line.split(',')) for line in lines if line.strip()]
+    if "HealthCheck_Server" in os.environ:
+        lines = os.environ['HealthCheck_Server'].splitlines()
+        ips = [tuple(line.split(',')) for line in lines if line.strip()]
 
     main(ip_ports, ips)
 
