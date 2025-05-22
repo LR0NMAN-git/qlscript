@@ -20,12 +20,15 @@ const timestamp = new Date().getTime().toString();
 
 // 签到配置信息 - 2024年8月更新
 const signConfig = {
-    activityId: "965439123345697835", // 更新的活动ID
+    activityId: "1080523113114726401", // 更新的活动ID
     storeId: 49006,
     appid: "wxafec6f8422cb357b",
     timestamp: timestamp,
-    signature: "E76A93D86E396547D52A0CBDD19A834F", // 更新的签名
-    data: "D3wiOEjlPFbtYhgV4FeEiRclg6TbfPQasjReY0VrxDZG3CmPySE4g5eFbCiulQnMTurKVpj7Gf/OE3tmvQGFcXWDyiDLrIpnAWhSLSZ63mI+Grmfx0pDsAGhgyEsKlfgWngzJvrHfiJHzyViI9kMGUwZKzDnhfpSCiWhDIWqvBvFbJQWvw/XCLVSrJ2CLzdTCYFZAd2R6I3kIMbgn+DaGg==" // 更新的加密数据
+    signature: "262AED8C2BB8E92269C18617B34D7F1E", // 更新的签名
+    data: "JUa+ygg2J78wPxD\/yt7UaDvlBA9p3ewvxSUEahZL\/PilsWqN7m5nMV9yMI+OTGRB0+jSIg9gX6w9PNs2t12eKnfSDdmM3QJjafi\/0Oc45UY6GFoSQbDVyIwOOVaZ\/spKENR+LRaNc8aFHQ0irU2cydBVxTiJ\/6RVcK1KZ3HBJ0PmrACF0nniyYTBCsVKFfvYHKl+6WZkozv7wWT3QUG0FpCU8HjyFc0iNWGOd4g342gvQnPbxm+qVbWtqTSBZ4VuN0VTVhXxIW\/XhbaJQ0Y4KA==",
+    version: 3,
+    x:"ffcae4dbca7a4582278e3506babcf350",
+    v:2
 }
 
 !(async () => {
@@ -105,7 +108,7 @@ function userSignIn() {
 
 function taskUrl() {
     return {
-        url: `https://miniapp.qmai.cn/web/cmk-center/sign/takePartInSign`,
+        url: `https://miniapp.qmai.cn/web/cmk-center/sign/takePartInSign?type__1475=eq0xnDyiG%3DY4glDlxGrtiE5iIP177iDWupD`,
         body: JSON.stringify({
             activityId: signConfig.activityId,
             storeId: signConfig.storeId,
@@ -113,20 +116,23 @@ function taskUrl() {
             timestamp: signConfig.timestamp,
             signature: signConfig.signature,
             data: signConfig.data,
-            version: 2
+            version: signConfig.version,
+            x: signConfig.x,
+            v: signConfig.v
         }),
         headers: {
             'Host': `miniapp.qmai.cn`,
             'Connection': 'keep-alive',
             'Accept': 'v=1.0',
             'content-type': 'application/json',
+            'cookie': 'acw_tc=ac11000117479259946885121e00669013ddaa1c8206490ca934713b7ca882;ssxmod_itna3=C50qzxuD9jitiQDODcAWG0z=P0QDtzrD0nG0OlDCqD=E=W=pUNK+DUeOVG7D0HNGFznqi8DG4D8DzqGkD3L7RItxDRwoWxD5DgW4Gvwds/ixDFzD0v+Dz40WFZ7kbrpDIMH3Phb7d/lzDA5bDlPDqxGTZey=TniNonq4pABeregmzWONTjbNfnTF36PDn6cPe=fNb+0ItS2qzCoLEnY3zzMiy+MU4D;',
             'Qm-From': 'wechat',
             'Qm-From-Type': 'catering',
             'store-id': signConfig.storeId,
             'Qm-User-Token': cookie,
             'Accept-Encoding': 'gzip,compress,br,deflate',
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.53(0x18003531) NetType/4G Language/zh_CN',
-            'Referer': 'https://servicewechat.com/wxafec6f8422cb357b/202/page-frame.html'
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.59(0x18003b2a) NetType/WIFI Language/zh_CN',
+            'Referer': 'https://servicewechat.com/wxafec6f8422cb357b/240/page-frame.html'
         }
     }
 }
