@@ -3,18 +3,30 @@
 只有签到得积分, 每天跑一两次就行
 积分可以换券
 
-授权注册后, 捉 webapi.qmai.cn 域名请求头里面的 Qm-User-Token, 填到变量 bwcjCookie 里面
+授权注册后, 捉 webapi.qmai.cn 或 miniapp.qmai.cn 域名请求头里面的 Qm-User-Token, 填到变量 bwcjCookie 里面
 多账号换行或@或&隔开
 export bwcjCookie="H3is33xad2xxxxxxxxxxxxxxxxxx"
 
 cron: 46 8,20 * * *
-const $ = new Env("霸王茶姬");
- */
+*/
 const $ = new Env('霸王茶姬');
 
-const bwcjCookie = ($.isNode() ? process.env.bwcjCookie : $.getdata('bwcjCookie')) || ''
+const bwcjCookie = ($.isNode() ? process.env.bwcjCookie : $.getdata('bwcjCookie')) || '';
 
 let cookieArr = [], cookie = '', length = 0, n = 0;
+
+// 当前时间戳
+const timestamp = new Date().getTime().toString();
+
+// 签到配置信息 - 2024年8月更新
+const signConfig = {
+    activityId: "965439123345697835", // 更新的活动ID
+    storeId: 49006,
+    appid: "wxafec6f8422cb357b",
+    timestamp: timestamp,
+    signature: "E76A93D86E396547D52A0CBDD19A834F", // 更新的签名
+    data: "D3wiOEjlPFbtYhgV4FeEiRclg6TbfPQasjReY0VrxDZG3CmPySE4g5eFbCiulQnMTurKVpj7Gf/OE3tmvQGFcXWDyiDLrIpnAWhSLSZ63mI+Grmfx0pDsAGhgyEsKlfgWngzJvrHfiJHzyViI9kMGUwZKzDnhfpSCiWhDIWqvBvFbJQWvw/XCLVSrJ2CLzdTCYFZAd2R6I3kIMbgn+DaGg==" // 更新的加密数据
+}
 
 !(async () => {
     if (!bwcjCookie) {
@@ -23,17 +35,28 @@ let cookieArr = [], cookie = '', length = 0, n = 0;
         return;
     }
 
-    cookieArr = bwcjCookie.split('\n');
+    // 支持多种分隔符
+    if (bwcjCookie.indexOf('@') > -1) {
+        cookieArr = bwcjCookie.split('@');
+    } else if (bwcjCookie.indexOf('&') > -1) {
+        cookieArr = bwcjCookie.split('&');
+    } else if (bwcjCookie.indexOf('\n') > -1) {
+        cookieArr = bwcjCookie.split('\n');
+    } else {
+        cookieArr = [bwcjCookie];
+    }
+    
     length = cookieArr.length;
-
-    $.log('------共' + length + '个账号------');
+    $.log(`------共${length}个账号------`);
 
     for (let i = 0; i < length; i++) {
-        n++;
-        $.log('------第' + n + '个账号签到------');
         if (cookieArr[i]) {
-            cookie = cookieArr[i];
+            cookie = cookieArr[i].trim(); // 去除可能的空格
+            n++;
+            $.log(`------第${n}个账号签到------`);
             await userSignIn();
+            // 防止接口限流
+            if (i < length - 1) await $.wait(2000);
         }
     }
 })()
@@ -50,16 +73,20 @@ function userSignIn() {
             try {
                 if (err) {
                     $.log(`${JSON.stringify(err)}`);
-                    $.log(resp);
                     $.log(`${$.name} API请求失败，请检查网路重试`);
                 } else {
                     if (safeGet(data)) {
                         data = JSON.parse(data);
                         if (data.status) {
-                            $.log(`今日签到成功`);
-                            $.msg($.name, `签到成功`, `${data.message}`);
+                            $.log(`今日签到成功: ${data.message}`);
+                            if (data.data && data.data.point) {
+                                $.log(`本次签到获得${data.data.point}积分`);
+                                $.msg($.name, `签到成功`, `获得${data.data.point}积分，${data.message}`);
+                            } else {
+                                $.msg($.name, `签到成功`, `${data.message}`);
+                            }
                         } else if (!data.status) {
-                            $.log(data.message);
+                            $.log(`签到失败: ${data.message}`);
                             $.msg($.name, `签到失败`, `${data.message}`);
                         } else {
                             $.log(`异常：${JSON.stringify(data)}`);
@@ -78,27 +105,24 @@ function userSignIn() {
 
 function taskUrl() {
     return {
-        url: `https://miniapp.qmai.cn/web/cmk-center/sign/takePartInSign?type__1475=n4%2Bh7K0IPfhxCtD%2FD0YoGkt5GQn52vuupD`,
-        body: '{"activityId":"947079313798000641","storeId":49006,"appid":"wxafec6f8422cb357b","timestamp":"1733208108370","signature":"F84990574DD68FEEBA2B4C4DBD14E9D4","data":"CAlwgtSZINBPnhO3LbP3lfFzsiG2afDoVmjQYWg9reBAyM5gz6dcVKNBxNOv2QnGUuKYLwrmHd7O8ytbufaGXWTxiTKrI1rB/WxfLC57rWkqGrTCIkyAegGhwyYsblfgVngzFf7AfzptxDZiOtcVWbz5KjOlyPqDOiWhTIXqmRv0J9QWuh/XCEZE74CGAudTCedYRd+B846kIOzrn+GxUA==","version":2}',
-        data: JSON.stringify({
-            activityId: "947079313798000641",
-            storeId: 49006,
-            appid: "wxafec6f8422cb357b",
-            timestamp: "1733208108370",
-            signature: "F84990574DD68FEEBA2B4C4DBD14E9D4",
-            data: "CAlwgtSZINBPnhO3LbP3lfFzsiG2afDoVmjQYWg9reBAyM5gz6dcVKNBxNOv2QnGUuKYLwrmHd7O8ytbufaGXWTxiTKrI1rB/WxfLC57rWkqGrTCIkyAegGhwyYsblfgVngzFf7AfzptxDZiOtcVWbz5KjOlyPqDOiWhTIXqmRv0J9QWuh/XCEZE74CGAudTCedYRd+B846kIOzrn+GxUA==",
+        url: `https://miniapp.qmai.cn/web/cmk-center/sign/takePartInSign`,
+        body: JSON.stringify({
+            activityId: signConfig.activityId,
+            storeId: signConfig.storeId,
+            appid: signConfig.appid,
+            timestamp: signConfig.timestamp,
+            signature: signConfig.signature,
+            data: signConfig.data,
             version: 2
         }),
         headers: {
             'Host': `miniapp.qmai.cn`,
             'Connection': 'keep-alive',
-            'Content-Length': 393,
             'Accept': 'v=1.0',
             'content-type': 'application/json',
-            'cookie': 'acw_tc=ac11000117332080784323313e009dc3b50ac7b28bf983882450b710e1da32;ssxmod_itna3=C50qzxuDgADtD=DkzGk7G0D2Ai=G7ND0ixWq07rKOWYYDRe9QbrPpK4B+dzK+xDsVDnbIsDbqDWDiq0kDCqiO5H/e3DiRiR3DBDY5TDlmjOnQrD0bKD/Ce0TDI4kqzltRe0CxLcAr4Cr/dYDnToD/4GhD0EsId5biBve/OxYkGeHImqKXl5bzBva/OdIS4DSSS4w3PY3MWxKuAhQhjePDfYCxayCgZ5xD;',
             'Qm-From': 'wechat',
             'Qm-From-Type': 'catering',
-            'store-id': 49006,
+            'store-id': signConfig.storeId,
             'Qm-User-Token': cookie,
             'Accept-Encoding': 'gzip,compress,br,deflate',
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.53(0x18003531) NetType/4G Language/zh_CN',
