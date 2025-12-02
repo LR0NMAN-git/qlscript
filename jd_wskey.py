@@ -679,6 +679,7 @@ if __name__ == '__main__':  # Python主函数执行入口
     tryCount = int(os.environ.get("WSKEY_TRY_COUNT", "1") if str(os.environ.get("WSKEY_TRY_COUNT")).isdigit() else "1")
     WSKEY_UPDATE_BOOL = bool(os.environ.get("WSKEY_UPDATE_HOUR"))
     WSKEY_AUTO_DISABLE = bool(os.environ.get("WSKEY_AUTO_DISABLE"))
+    notify_text = ""  # 初始化通知文本收集变量
     for ws in wslist:  # wslist变量 for循环  [wslist -> ws]
         wspin = ws.split(";")[0]  # 变量分割 ;
         if "pin" in wspin:  # 判断 pin 是否存在于 [wspin]
@@ -707,7 +708,7 @@ if __name__ == '__main__':  # Python主函数执行入口
                             logger.info(str(wspin) + "账号禁用")  # 标准日志输出
                             ql_disable(eid)  # 执行方法[ql_disable] 传递 eid
                             text = f"账号: {wspin} WsKey疑似失效, 已禁用Cookie"
-                        ql_send(text)
+                        notify_text += text + "\n"
                 else:
                     logger.info(str(wspin) + "账号有效")  # 标准日志输出
                     ql_enable(eid)  # 执行方法[ql_enable] 传递 eid
@@ -721,11 +722,14 @@ if __name__ == '__main__':  # Python主函数执行入口
                 else:
                     pt_pin = "pt_" + str(ws.split(";")[0])
                     text = f"账号{pt_pin}疑似IP风控等问题失效"
-                    ql_send(text)
+                    notify_text += text + "\n"
             logger.info(f"暂停{sleepTime}秒\n")  # 标准日志输出
             time.sleep(sleepTime)  # 脚本休眠
         else:
             logger.info("WSKEY格式错误\n--------------------\n")  # 标准日志输出
     logger.info("执行完成\n--------------------")  # 标准日志输出
+    # 统一发送通知
+    if notify_text.strip():
+        ql_send(notify_text.strip())
     sys.exit(0)  # 脚本退出
     # Enjoy
