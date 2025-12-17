@@ -106,23 +106,27 @@ def get_sign_info(cookies):
         result = response.json()
         logger.info(f"签到信息接口返回结果: {json.dumps(result, ensure_ascii=False)}")
         
-        if result.get("code") == 0:
+        if result.get("code") == 200:
             data = result.get("data")
             if data:
                 logger.info("获取签到信息成功")
                 return data
             else:
                 logger.error("签到信息接口返回data为空")
+                send_notification("傲晨云签到失败", "签到信息接口返回data为空")
                 return None
         else:
             logger.error(f"签到信息接口返回错误: {result.get('msg')}")
+            send_notification("傲晨云签到失败", f"签到信息接口返回错误: {result.get('msg')}")
             return None
     except requests.exceptions.HTTPError as e:
         logger.error(f"签到信息接口HTTP错误: {str(e)}")
         logger.error(f"响应内容: {response.text if 'response' in locals() else '无响应'}")
+        send_notification("傲晨云签到失败", f"签到信息接口HTTP错误: {str(e)}")
         return None
     except Exception as e:
         logger.error(f"获取签到信息失败: {str(e)}")
+        send_notification("傲晨云签到失败", f"获取签到信息失败: {str(e)}")
         return None
 
 def get_day_of_week():
@@ -220,7 +224,7 @@ def main():
     code = result.get("code", -1)
     msg = result.get("msg", "未知错误")
     
-    if code == 0:
+    if code == 200:
         logger.info("签到成功")
         send_notification("傲晨云签到成功", f"签到结果: {msg}")
     elif code == 401:
