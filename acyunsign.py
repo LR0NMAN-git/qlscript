@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
 # 从环境变量获取Authorization令牌
-AUTHORIZATION = os.environ.get('acyuncookie', '')
+AUTHORIZATION = os.environ.get('acyunToken', '')
 if not AUTHORIZATION:
     logger.error("未设置环境变量acyuncookie，请在青龙面板中添加该环境变量")
     sys.exit(1)
