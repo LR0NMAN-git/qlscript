@@ -263,6 +263,11 @@ def get_latest_file(files):
 
 # 返回值 Token
 def ql_login() -> str:  # 方法 青龙登录(获取Token 功能同上)
+    # 初始化变量，避免UnboundLocalError
+    username = ""
+    password = ""
+    twoFactorSecret = ""
+    
     token_file_list = ['/ql/data/db/keyv.sqlite', '/ql/data/config/auth.json', '/ql/config/auth.json']
     path = get_latest_file(token_file_list)
     if os.path.isfile(path):  # 进行文件真值判断
@@ -270,21 +275,38 @@ def ql_login() -> str:  # 方法 青龙登录(获取Token 功能同上)
             with open(path, "r", encoding="latin1") as file:
                 auth = file.read()
                 matches = re.search(r'"token":"([^"]*)"(?!.*"token":)', auth)
-                token = matches.group(1)
+                token = matches.group(1) if matches else ""
+                
+                # 青龙2.18+版本中，用户名和密码信息可能存储在keyv.sqlite中
+                # 尝试从keyv.sqlite中提取用户名和密码
+                username_matches = re.search(r'"username":"([^"]*)"', auth)
+                password_matches = re.search(r'"password":"([^"]*)"', auth)
+                twoFactor_matches = re.search(r'"twoFactorSecret":"([^"]*)"', auth)
+                
+                username = username_matches.group(1) if username_matches else ""
+                password = password_matches.group(1) if password_matches else ""
+                twoFactorSecret = twoFactor_matches.group(1) if twoFactor_matches else ""
         else:
             with open(path, "r") as file:
                 auth = file.read()
                 auth = json.loads(auth)
-                username = auth["username"]  # 提取 username
-                password = auth["password"]  # 提取 password
-                token = auth["token"]
-        try:
-            twoFactorSecret = auth["twoFactorSecret"]
-        except Exception as err:
-            logger.debug(str(err))  # Debug日志输出
-            twoFactorSecret = ''
-        if token == '':  # 判断 Token是否为空
-            return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
+                username = auth.get("username", "")  # 提取 username
+                password = auth.get("password", "")  # 提取 password
+                token = auth.get("token", "")
+                twoFactorSecret = auth.get("twoFactorSecret", "")
+        
+        if token == '' or not token:  # 判断 Token是否为空
+            # 如果没有用户名和密码，尝试从环境变量获取
+            if not username and not password:
+                username = os.environ.get("QL_USER", "")
+                password = os.environ.get("QL_PASSWORD", "")
+                logger.info("从环境变量获取青龙认证信息")
+            
+            if username and password:
+                return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
+            else:
+                logger.info("无法获取青龙认证信息，请检查配置或设置QL_USER和QL_PASSWORD环境变量")
+                sys.exit(1)
         else:
             url = ql_url + 'api/user'  # 设置URL请求地址 使用 Format格式化端口
             headers = {
@@ -295,10 +317,28 @@ def ql_login() -> str:  # 方法 青龙登录(获取Token 功能同上)
             if res.status_code == 200:  # 判断 HTTP返回状态码
                 return token  # 有效 返回 token
             else:
-                return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
+                # 如果token无效，尝试使用用户名和密码重新登录
+                if not username and not password:
+                    username = os.environ.get("QL_USER", "")
+                    password = os.environ.get("QL_PASSWORD", "")
+                
+                if username and password:
+                    return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
+                else:
+                    logger.info("Token无效且无法获取青龙认证信息，请检查配置或设置QL_USER和QL_PASSWORD环境变量")
+                    sys.exit(1)
     else:
-        logger.info("没有发现auth文件, 你这是青龙吗???")  # 输出标准日志
-        sys.exit(0)  # 脚本退出
+        logger.info("没有发现认证文件, 尝试从环境变量获取认证信息")
+        # 尝试从环境变量获取认证信息
+        username = os.environ.get("QL_USER", "")
+        password = os.environ.get("QL_PASSWORD", "")
+        twoFactorSecret = os.environ.get("QL_TWO_FACTOR_SECRET", "")
+        
+        if username and password:
+            return get_qltoken(username, password, twoFactorSecret)
+        else:
+            logger.info("未找到认证文件且环境变量未设置，请检查青龙安装或设置QL_USER和QL_PASSWORD环境变量")
+            sys.exit(1)  # 脚本退出
 
 
 # 返回值 list[wskey]
