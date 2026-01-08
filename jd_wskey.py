@@ -155,11 +155,17 @@ def ql_send(text):
         try:
             from datetime import datetime, time
             now = datetime.now()
-            start_time = time(8, 0)
-            end_time = time(23, 59, 59)
+            current_time = now.time()
             print(f"当前时间{now}")
-            # 判断是否在范围内
-            if now.time() >= start_time and (now.time() <= end_time or now.time() == time(0, 0)):
+            
+            # 定义允许推送的时间段：早上8:00-8:10 和 晚上20:00-20:10
+            morning_start = time(8, 0)
+            morning_end = time(8, 10)
+            evening_start = time(20, 0)
+            evening_end = time(20, 10)
+            
+            # 判断是否在允许的推送时间范围内
+            if (morning_start <= current_time <= morning_end) or (evening_start <= current_time <= evening_end):
                 print("推送")
                 send('WSKEY转换', text)  # 消息发送
             else:
