@@ -158,9 +158,9 @@ def ql_send(text):
             current_time = now.time()
             print(f"当前时间{now}")
             
-            # 定义允许推送的时间段：早上8:00-8:10 和 晚上20:00-20:10
-            morning_start = time(8, 0)
-            morning_end = time(8, 10)
+            # 定义允许推送的时间段：早上9:00-9:10 和 晚上20:00-20:10
+            morning_start = time(9, 0)
+            morning_end = time(9, 10)
             evening_start = time(20, 0)
             evening_end = time(20, 10)
             
@@ -175,81 +175,8 @@ def ql_send(text):
             logger.info("通知发送失败")  # 标准日志输出
 
 
-# 登录青龙 返回值 token
-def get_qltoken(username, password, twoFactorSecret):  # 方法 用于获取青龙 Token
-    logger.info("Token失效, 新登陆\n")  # 日志输出
-    if twoFactorSecret:
-        try:
-            twoCode = ttotp(twoFactorSecret)
-        except Exception as err:
-            logger.debug(str(err))  # Debug日志输出
-            logger.info("TOTP异常")
-            sys.exit(1)
-        url = ql_url + "api/user/login"  # 设置青龙地址 使用 format格式化自定义端口
-        body = {
-            'username': username,
-            'password': password
-        }  # HTTP请求载荷
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }  # HTTP请求头 设置为 Json格式
-        try:
-            res = requests.post(url=url, headers=headers, json=body)  # 使用 requests模块进行 HTTP POST请求
-            if res.status_code == 200 and res.json()["code"] == 420:
-                url = ql_url + 'api/user/two-factor/login'
-                body = {
-                    'username': username,
-                    'password': password,
-                    'code': twoCode
-                }
-                res = requests.put(url=url, headers=headers, json=body)
-                if res.status_code == 200 and res.json()["code"] == 200:
-                    token = res.json()["data"]['token']  # 从 res.text 返回值中 取出 Token值
-                    return token
-                else:
-                    logger.info("两步校验失败\n")  # 日志输出
-                    sys.exit(1)
-            elif res.status_code == 200 and res.json()["code"] == 200:
-                token = res.json()["data"]['token']  # 从 res.text 返回值中 取出 Token值
-                return token
-        except Exception as err:
-            logger.debug(str(err))  # Debug日志输出
-            sys.exit(1)
-    else:
-        url = ql_url + 'api/user/login'
-        body = {
-            'username': username,
-            'password': password
-        }  # HTTP请求载荷
-        headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }  # HTTP请求头 设置为 Json格式
-        try:
-            res = requests.post(url=url, headers=headers, json=body)  # 使用 requests模块进行 HTTP POST请求
-            if res.status_code == 200 and res.json()["code"] == 200:
-                token = res.json()["data"]['token']  # 从 res.text 返回值中 取出 Token值
-                return token
-            else:
-                ql_send("青龙登录失败!")
-                sys.exit(1)  # 脚本退出
-        except Exception as err:
-            logger.debug(str(err))  # Debug日志输出
-            logger.info("使用旧版青龙登录接口")
-            url = ql_url + 'api/login'  # 设置青龙地址 使用 format格式化自定义端口
-            try:
-                res = requests.post(url=url, headers=headers, json=body)  # 使用 requests模块进行 HTTP POST请求
-                token = json.loads(res.text)["data"]['token']  # 从 res.text 返回值中 取出 Token值
-            except Exception as err:
-                logger.debug(str(err))  # Debug日志输出
-                logger.info("青龙登录失败, 请检查面板状态!")  # 标准日志输出
-                ql_send('青龙登陆失败, 请检查面板状态.')
-                sys.exit(1)  # 脚本退出
-            else:  # 无异常执行分支
-                return token  # 返回 token值
-        # else:  # 无异常执行分支
-        #     return token  # 返回 token值
+# 由于使用了内置QLAPI对象，不再需要手动登录获取token
+# 以下登录相关函数已被废弃
 
 
 def get_latest_file(files):
@@ -265,86 +192,6 @@ def get_latest_file(files):
         except FileNotFoundError:
             continue
     return latest_file
-
-
-# 返回值 Token
-def ql_login() -> str:  # 方法 青龙登录(获取Token 功能同上)
-    # 初始化变量，避免UnboundLocalError
-    username = ""
-    password = ""
-    twoFactorSecret = ""
-    
-    token_file_list = ['/ql/data/db/keyv.sqlite', '/ql/data/config/auth.json', '/ql/config/auth.json']
-    path = get_latest_file(token_file_list)
-    if os.path.isfile(path):  # 进行文件真值判断
-        if 'keyv' in path:
-            with open(path, "r", encoding="latin1") as file:
-                auth = file.read()
-                matches = re.search(r'"token":"([^"]*)"(?!.*"token":)', auth)
-                token = matches.group(1) if matches else ""
-                
-                # 青龙2.18+版本中，用户名和密码信息可能存储在keyv.sqlite中
-                # 尝试从keyv.sqlite中提取用户名和密码
-                username_matches = re.search(r'"username":"([^"]*)"', auth)
-                password_matches = re.search(r'"password":"([^"]*)"', auth)
-                twoFactor_matches = re.search(r'"twoFactorSecret":"([^"]*)"', auth)
-                
-                username = username_matches.group(1) if username_matches else ""
-                password = password_matches.group(1) if password_matches else ""
-                twoFactorSecret = twoFactor_matches.group(1) if twoFactor_matches else ""
-        else:
-            with open(path, "r") as file:
-                auth = file.read()
-                auth = json.loads(auth)
-                username = auth.get("username", "")  # 提取 username
-                password = auth.get("password", "")  # 提取 password
-                token = auth.get("token", "")
-                twoFactorSecret = auth.get("twoFactorSecret", "")
-        
-        if token == '' or not token:  # 判断 Token是否为空
-            # 如果没有用户名和密码，尝试从环境变量获取
-            if not username and not password:
-                username = os.environ.get("QL_USER", "")
-                password = os.environ.get("QL_PASSWORD", "")
-                logger.info("从环境变量获取青龙认证信息")
-            
-            if username and password:
-                return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
-            else:
-                logger.info("无法获取青龙认证信息，请检查配置或设置QL_USER和QL_PASSWORD环境变量")
-                sys.exit(1)
-        else:
-            url = ql_url + 'api/user'  # 设置URL请求地址 使用 Format格式化端口
-            headers = {
-                'Authorization': 'Bearer {0}'.format(token),
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36 Edg/94.0.992.38'
-            }  # 设置用于 HTTP头
-            res = requests.get(url=url, headers=headers)  # 调用 request模块发送 get请求
-            if res.status_code == 200:  # 判断 HTTP返回状态码
-                return token  # 有效 返回 token
-            else:
-                # 如果token无效，尝试使用用户名和密码重新登录
-                if not username and not password:
-                    username = os.environ.get("QL_USER", "")
-                    password = os.environ.get("QL_PASSWORD", "")
-                
-                if username and password:
-                    return get_qltoken(username, password, twoFactorSecret)  # 调用方法 get_qltoken 传递 username & password
-                else:
-                    logger.info("Token无效且无法获取青龙认证信息，请检查配置或设置QL_USER和QL_PASSWORD环境变量")
-                    sys.exit(1)
-    else:
-        logger.info("没有发现认证文件, 尝试从环境变量获取认证信息")
-        # 尝试从环境变量获取认证信息
-        username = os.environ.get("QL_USER", "")
-        password = os.environ.get("QL_PASSWORD", "")
-        twoFactorSecret = os.environ.get("QL_TWO_FACTOR_SECRET", "")
-        
-        if username and password:
-            return get_qltoken(username, password, twoFactorSecret)
-        else:
-            logger.info("未找到认证文件且环境变量未设置，请检查青龙安装或设置QL_USER和QL_PASSWORD环境变量")
-            sys.exit(1)  # 脚本退出
 
 
 # 返回值 list[wskey]
@@ -536,25 +383,31 @@ def update():  # 方法 脚本更新模块
 
 
 def ql_api(method, api, body=None) -> dict:
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
-    }
-    url = ql_url + api
-    for retry_count in range(3):
-        try:
-            if type(body) == dict:
-                res = ql_session.request(method, url=url, headers=headers, json=body).json()
-            else:
-                res = ql_session.request(method, url=url, headers=headers, data=body).json()
-        except Exception as err:
-            logger.debug(str(err))
-            logger.info(f"\n青龙{api}接口错误，重试次数：{retry_count + 1}")
-            continue
+    """使用内置QLAPI对象调用青龙API"""
+    try:
+        global QLAPI
+        if api == 'api/envs' and method == 'GET':
+            # 获取环境变量列表
+            return QLAPI.getEnvs({"searchValue": ""})
+        elif api == 'api/envs' and method == 'PUT':
+            # 更新环境变量
+            return QLAPI.updateEnv(body)
+        elif api == 'api/envs' and method == 'POST':
+            # 创建环境变量
+            return QLAPI.createEnv({"envs": [body]})
+        elif api == 'api/envs/enable':
+            # 启用环境变量
+            return QLAPI.enableEnvs({"ids": body})
+        elif api == 'api/envs/disable':
+            # 禁用环境变量
+            return QLAPI.disableEnvs({"ids": body})
         else:
-            return res
-    logger.info(f"\n青龙{api}接口多次重试仍然失败")
-    sys.exit(1)
+            logger.error(f"不支持的API调用：{method} {api}")
+            sys.exit(1)
+    except Exception as err:
+        logger.debug(str(err))
+        logger.info(f"\n青龙{api}接口错误")
+        sys.exit(1)
 
 
 def ql_check(port) -> bool:  # 方法 检查青龙端口
@@ -588,15 +441,15 @@ def serch_ck(pin):  # 方法 搜索 Pin
 
 
 def get_env():  # 方法 读取变量
-    api = 'api/envs'
-    res = ql_api("GET", api)
+    """获取所有环境变量"""
+    res = ql_api("GET", 'api/envs')
     data = res['data']
     return data
 
 
 def check_id() -> str:  # 方法 兼容青龙老版本与新版本 id & _id的问题
-    api = 'api/envs'
-    res = ql_api("GET", api)
+    """检查环境变量ID格式"""
+    res = ql_api("GET", 'api/envs')
     if '_id' in res['data'][0]:  # 判断 [_id]
         logger.info("使用 _id 键值")  # 标准日志输出
         return '_id'  # 返回 -> '_id'
@@ -606,20 +459,20 @@ def check_id() -> str:  # 方法 兼容青龙老版本与新版本 id & _id的�
 
 
 def ql_update(eid, newck):  # 方法 青龙更新变量 传递 id cookie
-    api = 'api/envs'
+    """更新环境变量"""
     body = {
         'name': 'JD_COOKIE',
         'value': newck,
         ql_id: eid
     }
-    ql_api("PUT", api, body)
+    ql_api("PUT", 'api/envs', body)
     ql_enable(eid)
 
 
 def ql_enable(eid):  # 方法 青龙变量启用 传递值 eid
-    api = 'api/envs/enable'
-    body = f'[{eid}]'
-    res = ql_api("PUT", api, body)
+    """启用环境变量"""
+    body = [eid]
+    res = ql_api("PUT", 'api/envs/enable', body)
     if res['code'] == 200:  # 判断返回值为 200
         logger.info("\n账号启用\n--------------------\n")  # 标准日志输出
         return True
@@ -629,9 +482,9 @@ def ql_enable(eid):  # 方法 青龙变量启用 传递值 eid
 
 
 def ql_disable(eid):  # 方法 青龙变量禁用 传递 eid
-    api = 'api/envs/disable'
-    body = f'[{eid}]'
-    res = ql_api("PUT", api, body)
+    """禁用环境变量"""
+    body = [eid]
+    res = ql_api("PUT", 'api/envs/disable', body)
     if res['code'] == 200:  # 判断返回值为 200
         logger.info("\n账号禁用成功\n--------------------\n")  # 标准日志输出
     else:
@@ -639,9 +492,12 @@ def ql_disable(eid):  # 方法 青龙变量禁用 传递 eid
 
 
 def ql_insert(i_ck):  # 方法 插入新变量
-    api = 'api/envs'
-    body = json.dumps([{"value": i_ck, "name": "JD_COOKIE"}])
-    res = ql_api("POST", api, body)
+    """创建新环境变量"""
+    body = {
+        "value": i_ck, 
+        "name": "JD_COOKIE"
+    }
+    res = ql_api("POST", 'api/envs', body)
     if res['code'] == 200:  # 判断返回值为 200
         logger.info("\n账号添加完成\n--------------------\n")  # 标准日志输出
     else:
@@ -710,17 +566,20 @@ def check_port():  # 方法 检查变量传递端口
 
 
 if __name__ == '__main__':  # Python主函数执行入口
-    port = check_port()  # 调用方法 [check_port]  并赋值 [port]
-    ql_url = f'http://127.0.0.1:{port}/'
-    ql_session = requests.session()
-    token = ql_login()  # 调用方法 [ql_login]  并赋值 [token]
-    ql_id = check_id()
-    # url_t = check_cloud()
-    # cloud_arg = cloud_info()
-    # update()
-    # ua = cloud_arg['User-Agent']
+    logger.info("开始执行wskey转换脚本")
+    
+    try:
+        global QLAPI
+        if not QLAPI:
+            logger.error("内置QLAPI对象未初始化")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"获取QLAPI对象失败: {str(e)}")
+        sys.exit(1)
+    
     wslist = get_wskey()
     envlist = get_env()
+    ql_id = check_id()
     sleepTime = int(os.environ.get("WSKEY_SLEEP", "10") if str(os.environ.get("WSKEY_SLEEP")).isdigit() else "10")
     tryCount = int(os.environ.get("WSKEY_TRY_COUNT", "1") if str(os.environ.get("WSKEY_TRY_COUNT")).isdigit() else "1")
     WSKEY_UPDATE_BOOL = bool(os.environ.get("WSKEY_UPDATE_HOUR"))

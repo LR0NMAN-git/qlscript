@@ -27,6 +27,9 @@ except Exception as err:
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
+# 重试常量设置
+RETRY_COUNT = 5
+
 # 从环境变量获取Authorization令牌
 AUTHORIZATION = os.environ.get('acyunToken', '')
 if not AUTHORIZATION:
@@ -60,24 +63,29 @@ def get_cookies_from_options():
         "Accept": "*/*"
     }
     
-    try:
-        response = requests.options(url, headers=headers, verify=False)
-        # 获取响应头中的Set-Cookie
-        set_cookie = response.headers.get('Set-Cookie', '')
-        # 解析cookie
-        cookies = {}
-        if set_cookie:
-            for cookie in set_cookie.split(';'):
-                cookie = cookie.strip()
-                if '=' in cookie:
-                    key, value = cookie.split('=', 1)
-                    cookies[key] = value
-        logger.info(f"预签到获取cookie成功: {cookies}")
-        return cookies
-    except Exception as e:
-        logger.error(f"预签到失败: {str(e)}")
-        send_notification("傲晨云签到失败", f"预签到失败: {str(e)}")
-        return None
+    for retry in range(RETRY_COUNT):
+        try:
+            response = requests.options(url, headers=headers, verify=False)
+            # 获取响应头中的Set-Cookie
+            set_cookie = response.headers.get('Set-Cookie', '')
+            # 解析cookie
+            cookies = {}
+            if set_cookie:
+                for cookie in set_cookie.split(';'):
+                    cookie = cookie.strip()
+                    if '=' in cookie:
+                        key, value = cookie.split('=', 1)
+                        cookies[key] = value
+            logger.info(f"预签到获取cookie成功: {cookies}")
+            return cookies
+        except Exception as e:
+            logger.error(f"预签到失败 (重试 {retry+1}/{RETRY_COUNT}): {str(e)}")
+            # 最后一次重试失败才发送通知
+            if retry == RETRY_COUNT - 1:
+                send_notification("傲晨云签到失败", f"预签到失败: {str(e)}")
+            # 重试间隔
+            time.sleep(1)
+    return None
 
 def get_sign_info(cookies):
     """调用签到信息接口获取数据"""
@@ -100,34 +108,51 @@ def get_sign_info(cookies):
         "Connection": "keep-alive"
     }
     
-    try:
-        response = requests.post(url, headers=headers, cookies=cookies, verify=False)
-        response.raise_for_status()
-        result = response.json()
-        logger.info(f"签到信息接口返回结果: {json.dumps(result, ensure_ascii=False)}")
-        
-        if result.get("code") == 200:
-            data = result.get("data")
-            if data:
-                logger.info("获取签到信息成功")
-                return data
+    for retry in range(RETRY_COUNT):
+        try:
+            response = requests.post(url, headers=headers, cookies=cookies, verify=False)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"签到信息接口返回结果: {json.dumps(result, ensure_ascii=False)}")
+            
+            if result.get("code") == 200:
+                data = result.get("data")
+                if data:
+                    logger.info("获取签到信息成功")
+                    return data
+                else:
+                    logger.error("签到信息接口返回data为空")
+                    # 只有最后一次重试才发送通知
+                    if retry == RETRY_COUNT - 1:
+                        send_notification("傲晨云签到失败", "签到信息接口返回data为空")
+                    return None
             else:
-                logger.error("签到信息接口返回data为空")
-                send_notification("傲晨云签到失败", "签到信息接口返回data为空")
+                logger.error(f"签到信息接口返回错误: {result.get('msg')}")
+                # 只有最后一次重试才发送通知
+                if retry == RETRY_COUNT - 1:
+                    send_notification("傲晨云签到失败", f"签到信息接口返回错误: {result.get('msg')}")
                 return None
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"签到信息接口HTTP错误 (重试 {retry+1}/{RETRY_COUNT}): {str(e)}")
+            logger.error(f"响应内容: {response.text if 'response' in locals() else '无响应'}")
+            # 只有最后一次重试才发送通知
+            if retry == RETRY_COUNT - 1:
+                send_notification("傲晨云签到失败", f"签到信息接口HTTP错误: {str(e)}")
+        except Exception as e:
+            logger.error(f"获取签到信息失败 (重试 {retry+1}/{RETRY_COUNT}): {str(e)}")
+            # 只有最后一次重试才发送通知
+            if retry == RETRY_COUNT - 1:
+                send_notification("傲晨云签到失败", f"获取签到信息失败: {str(e)}")
+        
+        # 非网络错误不需要重试，直接返回
+        if isinstance(e, (requests.exceptions.HTTPError, requests.exceptions.ConnectionError, requests.exceptions.Timeout)):
+            # 网络相关错误，重试前等待
+            time.sleep(1)
         else:
-            logger.error(f"签到信息接口返回错误: {result.get('msg')}")
-            send_notification("傲晨云签到失败", f"签到信息接口返回错误: {result.get('msg')}")
+            # 其他错误，不重试
             return None
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"签到信息接口HTTP错误: {str(e)}")
-        logger.error(f"响应内容: {response.text if 'response' in locals() else '无响应'}")
-        send_notification("傲晨云签到失败", f"签到信息接口HTTP错误: {str(e)}")
-        return None
-    except Exception as e:
-        logger.error(f"获取签到信息失败: {str(e)}")
-        send_notification("傲晨云签到失败", f"获取签到信息失败: {str(e)}")
-        return None
+    
+    return None
 
 def get_day_of_week():
     """获取当天是星期几，返回中文星期X"""
@@ -182,21 +207,34 @@ def sign_in(cookies, sign_info):
     body = build_request_body(sign_info)
     logger.info(f"签到请求体: {json.dumps(body, ensure_ascii=False)}")
     
-    try:
-        response = requests.post(url, headers=headers, cookies=cookies, json=body, verify=False)
-        response.raise_for_status()
-        result = response.json()
-        logger.info(f"签到响应: {json.dumps(result, ensure_ascii=False)}")
-        return result
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"签到HTTP错误: {str(e)}")
-        logger.error(f"响应内容: {response.text if 'response' in locals() else '无响应'}")
-        send_notification("傲晨云签到失败", f"签到HTTP错误: {str(e)}")
-        return None
-    except Exception as e:
-        logger.error(f"签到失败: {str(e)}")
-        send_notification("傲晨云签到失败", f"签到失败: {str(e)}")
-        return None
+    for retry in range(RETRY_COUNT):
+        try:
+            response = requests.post(url, headers=headers, cookies=cookies, json=body, verify=False)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"签到响应: {json.dumps(result, ensure_ascii=False)}")
+            return result
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"签到HTTP错误 (重试 {retry+1}/{RETRY_COUNT}): {str(e)}")
+            logger.error(f"响应内容: {response.text if 'response' in locals() else '无响应'}")
+            # 只有最后一次重试才发送通知
+            if retry == RETRY_COUNT - 1:
+                send_notification("傲晨云签到失败", f"签到HTTP错误: {str(e)}")
+        except Exception as e:
+            logger.error(f"签到失败 (重试 {retry+1}/{RETRY_COUNT}): {str(e)}")
+            # 只有最后一次重试才发送通知
+            if retry == RETRY_COUNT - 1:
+                send_notification("傲晨云签到失败", f"签到失败: {str(e)}")
+        
+        # 非网络错误不需要重试，直接返回
+        if isinstance(e, (requests.exceptions.HTTPError, requests.exceptions.ConnectionError, requests.exceptions.Timeout)):
+            # 网络相关错误，重试前等待
+            time.sleep(1)
+        else:
+            # 其他错误，不重试
+            return None
+    
+    return None
 
 def main():
     """主函数"""
