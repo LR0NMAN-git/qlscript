@@ -384,26 +384,30 @@ def update():  # 方法 脚本更新模块
 
 def ql_api(method, api, body=None) -> dict:
     """使用内置QLAPI对象调用青龙API"""
+    logger.info(f"调用青龙API：{method} {api} {body}")
     try:
         global QLAPI
+        res = None
         if api == 'api/envs' and method == 'GET':
             # 获取环境变量列表
-            return QLAPI.getEnvs({"searchValue": ""})
+            res = QLAPI.getEnvs({"searchValue": ""})
         elif api == 'api/envs' and method == 'PUT':
             # 更新环境变量
-            return QLAPI.updateEnv(body)
+            res = QLAPI.updateEnv({"env": body}) 
         elif api == 'api/envs' and method == 'POST':
             # 创建环境变量
-            return QLAPI.createEnv({"envs": [body]})
+            res = QLAPI.createEnv({"envs": [body]})
         elif api == 'api/envs/enable':
             # 启用环境变量
-            return QLAPI.enableEnvs({"ids": body})
+            res = QLAPI.enableEnvs({"ids": body})
         elif api == 'api/envs/disable':
             # 禁用环境变量
-            return QLAPI.disableEnvs({"ids": body})
+            res = QLAPI.disableEnvs({"ids": body})
         else:
             logger.error(f"不支持的API调用：{method} {api}")
             sys.exit(1)
+        logger.info(f"调用青龙API返回：{res}")
+        return res
     except Exception as err:
         logger.debug(str(err))
         logger.info(f"\n青龙{api}接口错误")
