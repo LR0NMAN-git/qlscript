@@ -390,7 +390,7 @@ def ql_api(method, api, body=None) -> dict:
         res = None
         if api == 'api/envs' and method == 'GET':
             # 获取环境变量列表
-            res = QLAPI.getEnvs({"searchValue": ""})
+            return QLAPI.getEnvs({"searchValue": ""})
         elif api == 'api/envs' and method == 'PUT':
             # 更新环境变量
             res = QLAPI.updateEnv({"env": body}) 
