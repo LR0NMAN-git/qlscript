@@ -206,15 +206,17 @@ def main() -> None:
     pending_rooms = [
         r for r in rooms
         if str(r.get("status", "")).upper() == "PENDING"
-        and _as_int(r.get("currentZiqiangCount")) < 9
-        and _as_int(r.get("currentHscCount")) < 2
+        and (
+            _as_int(r.get("currentZiqiangCount")) < 9
+            or _as_int(r.get("currentHscCount")) < 2
+        )
     ]
     if not pending_rooms:
         logger.info(f"未发现PENDING房间，共扫描{len(rooms)}条")
         return
 
     lines: List[str] = [f"发现pending房间，共{len(pending_rooms)}"]
-    show_limit = 20
+    show_limit = 5
     for idx, room in enumerate(pending_rooms[:show_limit], start=1):
         hsc_count = _as_int(room.get("currentHscCount"))
         ziqiang_count = _as_int(room.get("currentZiqiangCount"))
