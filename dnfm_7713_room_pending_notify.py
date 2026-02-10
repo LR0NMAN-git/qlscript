@@ -197,21 +197,38 @@ def main() -> None:
         logger.info(msg)
         sys.exit(1)
 
-    pending_rooms = [r for r in rooms if str(r.get("status", "")).upper() == "PENDING"]
+    def _as_int(value: Any, default: int = 0) -> int:
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    pending_rooms = [
+        r for r in rooms
+        if str(r.get("status", "")).upper() == "PENDING"
+        and _as_int(r.get("currentZiqiangCount")) < 9
+        and _as_int(r.get("currentHscCount")) < 2
+    ]
     if not pending_rooms:
         logger.info(f"未发现PENDING房间，共扫描{len(rooms)}条")
         return
 
-    lines = [f"发现PENDING房间: {len(pending_rooms)} 个（扫描 {len(rooms)} 条）"]
+    lines: List[str] = [f"发现pending房间，共{len(pending_rooms)}"]
     show_limit = 20
-    for room in pending_rooms[:show_limit]:
-        lines.append(_format_room(room))
+    for idx, room in enumerate(pending_rooms[:show_limit], start=1):
+        hsc_count = _as_int(room.get("currentHscCount"))
+        ziqiang_count = _as_int(room.get("currentZiqiangCount"))
+        taila_rate = room.get("tailaRate")
+        taila_quantity = room.get("tailaQuantity")
+        lines.append(
+            f"{idx}，打手{hsc_count}人，老板{ziqiang_count}人，比例{taila_rate}，出售泰拉{taila_quantity}万"
+        )
     if len(pending_rooms) > show_limit:
         lines.append(f"... 其余 {len(pending_rooms) - show_limit} 个未展示")
 
     content = "\n".join(lines)
     logger.info(content)
-    send("7713泰拉车房间", "发现PENDING房间")
+    send("7713泰拉车房间", content)
 
 
 if __name__ == "__main__":
